@@ -451,7 +451,21 @@ nav button.active{color:var(--cream);background:rgba(201,169,110,.1);border:1px 
 .prof-edit-btn:hover{background:var(--accent-dim);}
 .prof-signout-btn{background:none;border:1px solid rgba(196,118,138,.4);color:var(--rose);font-family:'Jost',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:12px 28px;border-radius:40px;cursor:pointer;transition:all .3s;margin-top:8px;}
 .prof-signout-btn:hover{background:var(--rose-glow);border-color:var(--rose);}
+
+  /* Auth Persistence Utils */
+  .auth-valid #authGate { display: none !important; }
 </style>
+<script>
+  // Immediate session check to prevent flickering
+  (function() {
+    try {
+      const s = localStorage.getItem('stillness_session');
+      if (s && JSON.parse(s).uid) {
+        document.documentElement.classList.add('auth-valid');
+      }
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
 <canvas id="canvas"></canvas>
@@ -924,7 +938,7 @@ nav button.active{color:var(--cream);background:rgba(201,169,110,.1);border:1px 
 // ═══════════════════════════════════════════════════
 //  BACKEND CONFIG
 // ═══════════════════════════════════════════════════
-const BACKEND_URL = 'https://meditation-beckend.onrender.com';
+const BACKEND_URL = 'https://meditation-backend.onrender.com';
 
 // ═══════════════════════════════════════════════════
 //  PERSISTENCE
@@ -1347,18 +1361,22 @@ async function loadStatsFromBackend(uid){
 }
 
 function onAuthSuccess(session,isNew){
+  console.log("Auth success for user:", session.uid);
   // Hide gate, show app
   document.getElementById('authGate').classList.add('hidden');
+  document.documentElement.classList.add('auth-valid');
   // Update header avatar
-  document.getElementById('hdrAvatar').textContent=session.name.charAt(0).toUpperCase();
-  document.getElementById('umName').textContent=session.name;
-  document.getElementById('umEmail').textContent=session.email;
+  if (session.name) {
+    document.getElementById('hdrAvatar').textContent=session.name.charAt(0).toUpperCase();
+    document.getElementById('umName').textContent=session.name;
+    document.getElementById('umEmail').textContent=session.email;
+  }
   // Render profile page
   renderProfile(session);
   if(isNew){
-    showToast('Welcome to Stillness, '+session.name.split(' ')[0]+' ✦');
+    showToast('Welcome to Stillness, '+ (session.name ? session.name.split(' ')[0] : 'User') +' ✦');
   }else{
-    showToast('Welcome back, '+session.name.split(' ')[0]+' ✦');
+    showToast('Welcome back, '+ (session.name ? session.name.split(' ')[0] : 'User') +' ✦');
   }
 }
 
@@ -1405,6 +1423,7 @@ function doSignOut(){
   closeUserMenu();
   // Show auth gate again
   document.getElementById('authGate').classList.remove('hidden');
+  document.documentElement.classList.remove('auth-valid');
   agSwitchTab('signin');
   // Clear inputs
   ['agSiEmail','agSiPass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1430,13 +1449,21 @@ document.addEventListener('keydown',function(e){
 });
 
 // ── Init: check for existing session ──
-// ── Init: check for existing session ──
 function initApp(){
+  console.log("Initializing app...");
   const session=getSession();
   if(session&&session.uid){
+    console.log("Session found, proceeding to app...");
+    document.getElementById('authGate').classList.add('hidden');
+    document.documentElement.classList.add('auth-valid');
     onAuthSuccess(session,false);
     loadStatsFromBackend(session.uid);
+  } else {
+    console.log("No session found, showing auth gate.");
+    document.getElementById('authGate').classList.remove('hidden');
+    document.documentElement.classList.remove('auth-valid');
   }
+  
   // Register Service Worker for PWA
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then((reg) => {
@@ -1454,11 +1481,11 @@ function initApp(){
   }
 }
 
-// Ensure DOM is ready before init
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp);
+// Ensure initApp runs correctly after all resources are settled
+if (document.readyState === 'complete') {
+  setTimeout(initApp, 200);
 } else {
-  initApp();
+  window.addEventListener('load', () => setTimeout(initApp, 100));
 }
 </script>
 </body>
