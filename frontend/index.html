@@ -460,8 +460,11 @@ nav button.active{color:var(--cream);background:rgba(201,169,110,.1);border:1px 
   (function() {
     try {
       const s = localStorage.getItem('stillness_session');
-      if (s && JSON.parse(s).uid) {
-        document.documentElement.classList.add('auth-valid');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.uid && parsed.token) {
+          document.documentElement.classList.add('auth-valid');
+        }
       }
     } catch (e) {}
   })();
@@ -1320,7 +1323,7 @@ async function agDoSignIn(){
     const data=await r.json();
     if(!r.ok||!data.user){agGenErr('agSiGenErr',data.message||'Login failed. Please check your credentials.');agSetLoading('agSiBtn',false,'Sign In');return;}
     const user=data.user;
-    const session={uid:user.id,email:user.email,name:user.username};
+    const session={uid:user.id,email:user.email,name:user.username,token:data.token};
     saveSession(session);
     onAuthSuccess(session,false);
     loadStatsFromBackend(session.uid);
@@ -1345,7 +1348,7 @@ async function agDoSignUp(){
     const data=await r.json();
     if(!r.ok){agGenErr('agSuGenErr',data.message||'An account with this email may already exist.');agSetLoading('agSuBtn',false,'Create Account');return;}
     const user=data.user;
-    const session={uid:user.id,email:user.email,name:user.username};
+    const session={uid:user.id,email:user.email,name:user.username,token:data.token};
     saveSession(session);
     onAuthSuccess(session,true);
   }catch(e){agGenErr('agSuGenErr','Could not connect to server. Please try again.');agSetLoading('agSuBtn',false,'Create Account');}
@@ -1465,22 +1468,37 @@ document.addEventListener('keydown',function(e){
 });
 
 // ── Init: check for existing session ──
-function initApp(){
+async function initApp(){
   console.log("Initializing app...");
   const session=getSession();
   if(session&&session.uid){
-    console.log("Session found, proceeding to app...");
-    // 1. Hide gate immediately
-    document.getElementById('authGate').classList.add('hidden');
-    document.documentElement.classList.add('auth-valid');
-    
-    // 2. Populate UI from session immediately
-    onAuthSuccess(session,false);
-    
-    // 3. Load extra stats from backend in the background
-    loadStatsFromBackend(session.uid);
+    if(session.token){
+      try{
+        const r=await fetch(BACKEND_URL+'/verify-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:session.token})});
+        const data=await r.json();
+        if(data.valid){
+          document.getElementById('authGate').classList.add('hidden');
+          document.documentElement.classList.add('auth-valid');
+          onAuthSuccess(session,false);
+          loadStatsFromBackend(session.uid);
+        } else {
+          clearSession();
+          document.getElementById('authGate').classList.remove('hidden');
+          document.documentElement.classList.remove('auth-valid');
+        }
+      }catch(e){
+        // Offline/Network Error fallback
+        document.getElementById('authGate').classList.add('hidden');
+        document.documentElement.classList.add('auth-valid');
+        onAuthSuccess(session,false);
+        loadStatsFromBackend(session.uid);
+      }
+    } else {
+      clearSession();
+      document.getElementById('authGate').classList.remove('hidden');
+      document.documentElement.classList.remove('auth-valid');
+    }
   } else {
-    console.log("No session found, showing auth gate.");
     document.getElementById('authGate').classList.remove('hidden');
     document.documentElement.classList.remove('auth-valid');
   }
