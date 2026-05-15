@@ -1192,7 +1192,7 @@ const wr=document.getElementById('weekRow');wr.innerHTML='';const days=['S','M',
 const bars=document.getElementById('historyBars');bars.innerHTML='';const today2=new Date();for(let i=13;i>=0;i--){const d=new Date(today2);d.setDate(today2.getDate()-i);const ds=d.toISOString().slice(0,10);const sessions=(s.sessions||[]).filter(x=>x.date===ds);const totalMins=sessions.reduce((a,b)=>a+(b.dur||0),0);const pct=Math.min(100,Math.round((totalMins/60)*100));const col=document.createElement('div');col.className='hb-col';col.innerHTML=`<div class="hb-bar" style="height:${Math.max(pct,sessions.length?8:2)}%"></div><div class="hb-day">${['S','M','T','W','T','F','S'][d.getDay()]}</div>`;bars.appendChild(col);}
 // Achievements
 const ag=document.getElementById('achGrid');ag.innerHTML='';achievements.forEach(a=>{const unlocked=a.req(streakData);const el=document.createElement('div');el.className='ach-card'+(unlocked?' unlocked':'');el.innerHTML=`<span class="ach-icon">${a.icon}</span><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div>`;ag.appendChild(el);});
-if(typeof wdcItems!=='undefined')updateSleepScore();}
+try{ if(typeof wdcItems!=='undefined')updateSleepScore(); }catch(e){} }
 
 renderStreak();
 
