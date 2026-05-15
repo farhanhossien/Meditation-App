@@ -944,7 +944,7 @@ nav button.active{color:var(--cream);background:rgba(201,169,110,.1);border:1px 
 // ═══════════════════════════════════════════════════
 //  BACKEND CONFIG
 // ═══════════════════════════════════════════════════
-const BACKEND_URL = 'https://meditation-beckend.onrender.com';
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : 'https://meditation-beckend.onrender.com';
 
 // ═══════════════════════════════════════════════════
 //  PERSISTENCE
