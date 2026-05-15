@@ -466,6 +466,12 @@ nav button.active{color:var(--cream);background:rgba(201,169,110,.1);border:1px 
     } catch (e) {}
   })();
 </script>
+<script>
+  // Migration: Clear old caches to force update from Cache-First SW
+  if ('caches' in window) {
+    ['stillness-v1', 'stillness-v2', 'stillness-v3'].forEach(c => caches.delete(c));
+  }
+</script>
 </head>
 <body>
 <canvas id="canvas"></canvas>
@@ -938,7 +944,7 @@ nav button.active{color:var(--cream);background:rgba(201,169,110,.1);border:1px 
 // ═══════════════════════════════════════════════════
 //  BACKEND CONFIG
 // ═══════════════════════════════════════════════════
-const BACKEND_URL = 'https://meditation-backend.onrender.com';
+const BACKEND_URL = 'https://meditation-beckend.onrender.com';
 
 // ═══════════════════════════════════════════════════
 //  PERSISTENCE
@@ -1362,21 +1368,31 @@ async function loadStatsFromBackend(uid){
 
 function onAuthSuccess(session,isNew){
   console.log("Auth success for user:", session.uid);
+  if (!session) return;
+  
   // Hide gate, show app
   document.getElementById('authGate').classList.add('hidden');
   document.documentElement.classList.add('auth-valid');
-  // Update header avatar
-  if (session.name) {
-    document.getElementById('hdrAvatar').textContent=session.name.charAt(0).toUpperCase();
-    document.getElementById('umName').textContent=session.name;
-    document.getElementById('umEmail').textContent=session.email;
-  }
+  
+  // Update UI Elements safely
+  const name = session.name || session.username || 'User';
+  const initial = name.charAt(0).toUpperCase();
+  
+  const elAvatar = document.getElementById('hdrAvatar');
+  const elUmName = document.getElementById('umName');
+  const elUmEmail = document.getElementById('umEmail');
+  
+  if (elAvatar) elAvatar.textContent = initial;
+  if (elUmName) elUmName.textContent = name;
+  if (elUmEmail) elUmEmail.textContent = session.email || '—';
+  
   // Render profile page
   renderProfile(session);
+  
   if(isNew){
-    showToast('Welcome to Stillness, '+ (session.name ? session.name.split(' ')[0] : 'User') +' ✦');
+    showToast('Welcome to Stillness, '+ name.split(' ')[0] +' ✦');
   }else{
-    showToast('Welcome back, '+ (session.name ? session.name.split(' ')[0] : 'User') +' ✦');
+    showToast('Welcome back, '+ name.split(' ')[0] +' ✦');
   }
 }
 
@@ -1454,9 +1470,14 @@ function initApp(){
   const session=getSession();
   if(session&&session.uid){
     console.log("Session found, proceeding to app...");
+    // 1. Hide gate immediately
     document.getElementById('authGate').classList.add('hidden');
     document.documentElement.classList.add('auth-valid');
+    
+    // 2. Populate UI from session immediately
     onAuthSuccess(session,false);
+    
+    // 3. Load extra stats from backend in the background
     loadStatsFromBackend(session.uid);
   } else {
     console.log("No session found, showing auth gate.");
