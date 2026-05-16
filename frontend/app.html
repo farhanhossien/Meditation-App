@@ -1001,10 +1001,21 @@ function setVol(key,v){if(active[key])active[key].g.gain.setTargetAtTime(parseFl
 // Mix presets
 function applyMix(keys){getAC();Object.keys(active).forEach(k=>{const t=document.getElementById('t-'+k);if(t)toggleSnd(k,t);});keys.forEach(k=>{const t=document.getElementById('t-'+k);if(t&&!active[k])toggleSnd(k,t);});}
 
-function stopAllSounds(){
+function stopAllSounds(silent = false){
   Object.keys(active).forEach(k=>{
+    const s = active[k];
+    s.g.gain.setTargetAtTime(0, AC.currentTime, 0.15);
+    setTimeout(()=>{
+      s.nodes.forEach(n=>{ try{ n.stop&&n.stop(); n.disconnect&&n.disconnect(); }catch(e){} });
+      if(s.cleanup)s.cleanup();
+    }, 400);
+    delete active[k];
     const t=document.getElementById('t-'+k);
-    if(t)toggleSnd(k,t);
+    if(t){
+      t.classList.remove('on');
+      const v = document.getElementById('v-'+k);
+      if(v) v.disabled = true;
+    }
   });
   if(binNodes){
     const btn=document.getElementById('bin-none');
@@ -1012,8 +1023,12 @@ function stopAllSounds(){
   }
   stopBreathTone();
   document.querySelectorAll('.sc').forEach(c=>c.classList.remove('playing'));
-  document.getElementById('stText').textContent='Ready to begin your practice';
-  showToast('Session stopped ✕');
+  updInd();
+  updStatus();
+  if(!silent){
+    document.getElementById('stText').textContent='Ready to begin your practice';
+    showToast('Session stopped ✕');
+  }
 }
 
 function ringBell(freq,evt){evt&&evt.stopPropagation();const ac=getAC(),now=ac.currentTime,g=ac.createGain();[[1,.4,4.2],[2.756,.2,2.8],[5.404,.1,1.9],[8.93,.05,1.3],[13.34,.02,.8]].forEach(([m,a,d])=>{const o=ac.createOscillator();o.type='sine';o.frequency.value=freq*m;const og=ac.createGain();og.gain.value=0;o.connect(og);og.connect(g);o.start(now);og.gain.setValueAtTime(a,now);og.gain.setTargetAtTime(0,now+.01,d);o.stop(now+d*7);});const del=ac.createDelay(.5);del.delayTime.value=.09;const fb=ac.createGain();fb.gain.value=.32;const rv=ac.createGain();rv.gain.value=.28;g.connect(del);del.connect(fb);fb.connect(del);del.connect(rv);g.connect(MG);rv.connect(MG);if(evt){const el=evt.currentTarget;el.style.boxShadow='0 0 20px rgba(201,169,110,.5)';setTimeout(()=>el.style.boxShadow='',800);}}
@@ -1107,19 +1122,9 @@ function playSession(card,name,snd){
     stopAllSounds();
     return;
   }
-  // Stop all other ambient sounds for an exclusive session
-  Object.keys(active).forEach(k=>{
-    if(k!==snd){
-      const t=document.getElementById('t-'+k);
-      if(t)toggleSnd(k,t);
-    }
-  });
-  // Also clear binaural nodes to avoid clashing
-  if(binNodes){
-    const btn=document.getElementById('bin-none');
-    if(btn)setBin('none',btn);
-  }
-  document.querySelectorAll('.sc').forEach(c=>c.classList.remove('playing'));
+  // Stop everything else first for a clean transition
+  stopAllSounds(true);
+  
   card.classList.add('playing');
   playSoundFor(snd);
   document.getElementById('stText').textContent=`Now playing: ${name}`;
