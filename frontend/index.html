@@ -999,17 +999,14 @@ function toggleSnd(key,tile){
   getAC();
   if(active[key]){
     const s = active[key];
-    s.g.gain.cancelScheduledValues(AC.currentTime);
-    s.g.gain.setTargetAtTime(0, AC.currentTime, 0.1);
-    setTimeout(()=>{
-      s.nodes.forEach(n=>{ 
-        try { 
-          if(n.stop) n.stop(); 
-          n.disconnect(); 
-        } catch(e){} 
-      });
-      if(s.cleanup) s.cleanup();
-    }, 300);
+    // Instant stop
+    s.nodes.forEach(n=>{ 
+      try { 
+        if(n.stop) n.stop(); 
+        n.disconnect(); 
+      } catch(e){} 
+    });
+    if(s.cleanup) s.cleanup();
     delete active[key];
     tile.classList.remove('on');
     const vInput = document.getElementById('v-'+key);
@@ -1036,20 +1033,14 @@ function applyMix(keys){getAC();Object.keys(active).forEach(k=>{const t=document
 function stopAllSounds(silent = false){
   Object.keys(active).forEach(k=>{
     const s = active[k];
-    // Immediate fade for clean stop
-    s.g.gain.cancelScheduledValues(AC.currentTime);
-    s.g.gain.setTargetAtTime(0, AC.currentTime, 0.05); 
-    
-    // Kill the nodes after a very short fade to avoid clicks
-    setTimeout(()=>{
-      s.nodes.forEach(n=>{ 
-        try { 
-          if(n.stop) n.stop(); 
-          n.disconnect(); 
-        } catch(e){} 
-      });
-      if(s.cleanup) s.cleanup();
-    }, 150);
+    // Kill the nodes immediately
+    s.nodes.forEach(n=>{ 
+      try { 
+        if(n.stop) n.stop(); 
+        n.disconnect(); 
+      } catch(e){} 
+    });
+    if(s.cleanup) s.cleanup();
     
     delete active[k];
     const t=document.getElementById('t-'+k);
@@ -1167,7 +1158,18 @@ function runBP(){if(!breathing)return;const phases=breathPatterns[curPattern];co
 // ═══════════════════════════════════════════════════
 //  SESSIONS
 // ═══════════════════════════════════════════════════
-function playSession(card,name,snd){document.querySelectorAll('.sc').forEach(c=>c.classList.remove('playing'));card.classList.add('playing');playSoundFor(snd);document.getElementById('stText').textContent=`Now playing: ${name}`;}
+function playSession(card,name,snd){
+  if(card.classList.contains('playing')){
+    stopAllSounds();
+    return;
+  }
+  // Stop everything else first for a clean transition
+  stopAllSounds(true);
+  
+  card.classList.add('playing');
+  playSoundFor(snd);
+  document.getElementById('stText').textContent=`Now playing: ${name}`;
+}
 
 // ═══════════════════════════════════════════════════
 //  TIMER
