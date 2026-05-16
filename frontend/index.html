@@ -1158,32 +1158,7 @@ function runBP(){if(!breathing)return;const phases=breathPatterns[curPattern];co
 // ═══════════════════════════════════════════════════
 //  SESSIONS
 // ═══════════════════════════════════════════════════
-let curSessionSnd=null;
-function playSession(card,name,snd){
-  document.querySelectorAll('.sc').forEach(c=>c.classList.remove('playing'));
-  card.classList.add('playing');
-  
-  // Stop all active ambient sounds using toggleSnd for UI sync
-  Object.keys(active).forEach(k=>{
-    const t=document.getElementById('t-'+k);
-    if(t) toggleSnd(k,t);
-  });
-  
-  // Also stop binaural and breath if any
-  if(binNodes){
-    binNodes.forEach(n=>{ try{ if(n.stop) n.stop(); n.disconnect(); }catch(e){} });
-    binNodes = null;
-    curBin = 'none';
-    document.querySelectorAll('.bnb').forEach(b=>b.classList.remove('on'));
-    const btn=document.getElementById('bin-none');
-    if(btn) btn.classList.add('on');
-  }
-  stopBreathTone();
-
-  curSessionSnd=snd;
-  playSoundFor(snd);
-  document.getElementById('stText').textContent=`Now playing: ${name}`;
-}
+let curSessionSnd=null;function playSession(card,name,snd){document.querySelectorAll('.sc').forEach(c=>c.classList.remove('playing'));card.classList.add('playing');Object.keys(active).forEach(k=>{const t=document.getElementById('t-'+k);if(t)toggleSnd(k,t);});curSessionSnd=snd;playSoundFor(snd);document.getElementById('stText').textContent=`Now playing: ${name}`;}
 
 // ═══════════════════════════════════════════════════
 //  TIMER
